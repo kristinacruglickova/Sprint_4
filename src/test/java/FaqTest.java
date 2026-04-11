@@ -69,8 +69,7 @@ public class FaqTest extends BaseTest {
         faqPage = new FaqPage(driver, wait);
         faqSteps = new FaqSteps(faqPage);
 
-        // Переход на страницу
-        faqPage.openPage(FAQ_URL);
+        openPage();
     }
 
     @Test

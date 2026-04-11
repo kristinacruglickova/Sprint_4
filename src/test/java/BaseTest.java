@@ -34,7 +34,11 @@ public class BaseTest {
             throw new IllegalArgumentException("Неподдерживаемый браузер: " + browser);
         }
 
-        driver.manage().window().maximize();
+        try {
+            driver.manage().window().maximize();
+        } catch (Exception e) {
+            System.err.println("Window maximize failed: " + e.getMessage());
+        }
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));

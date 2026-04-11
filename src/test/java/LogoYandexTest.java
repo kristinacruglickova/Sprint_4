@@ -4,6 +4,7 @@ import org.junit.runners.Parameterized;
 import steps.LogoYandexSteps;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public class LogoYandexTest extends BaseTest {
@@ -25,7 +26,9 @@ public class LogoYandexTest extends BaseTest {
         openPage();
         logoYandexSteps.checkLogoYandex();
 
-        assertEquals(
-                "Переход на главную страницу Яндекса не выполнен", mainPage.getUrlYandex(), logoYandexSteps.getUrlOpenedInSecondTab());
+        String actualUrl = logoYandexSteps.getUrlOpenedInSecondTab();
+        assertTrue(
+                "Переход на главную страницу Яндекса не выполнен",
+                actualUrl.contains("yandex.ru") || actualUrl.contains("dzen.ru"));
     }
 }

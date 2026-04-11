@@ -41,7 +41,7 @@ public class FaqPage {
      * @return элемент вопроса (WebElement)
      */
     private WebElement findQuestionElement(String questionText) {
-        By questionByXpath = By.xpath(String.format(QUESTION_XPATH_TEMPLATE, questionText));
+        By questionByXpath = By.xpath(String.format("//*[normalize-space(.) = '%s']", questionText));
         return wait.until(ExpectedConditions.elementToBeClickable(questionByXpath));
     }
 

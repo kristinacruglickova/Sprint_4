@@ -23,7 +23,7 @@ public class MainPage {
     private final By downOrderBtn = By.xpath(".//button[contains(@class, 'Button_Middle') and text() = 'Заказать']");
     private final By logoSakamoto = By.xpath(".//*[@alt='Scooter']");
     private final By logoYandex = By.xpath(".//*[@alt='Yandex']");
-    private final String scrollIntoViewScript = "arguments[0].scrollIntoView();";
+    private final String scrollIntoViewScript = "arguments[0].scrollIntoView({block:'center', inline:'nearest'});";
 
     public MainPage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
@@ -103,8 +103,7 @@ public class MainPage {
      * Принимает куки (кликает по кнопке согласия)
      */
     public void acceptCookies() {
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(3));
-        driver.findElement(getAcceptBtn()).click();
+        wait.until(ExpectedConditions.elementToBeClickable(getAcceptBtn())).click();
     }
 
     /**
