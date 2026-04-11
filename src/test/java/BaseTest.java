@@ -11,7 +11,8 @@ import page.OrderMakePage;
 import java.time.Duration;
 
 public class BaseTest {
-    private WebDriver driver;
+
+    protected WebDriver driver;
     private final String browser;
 
     MainPage mainPage;
@@ -23,36 +24,39 @@ public class BaseTest {
 
     @Before
     public void start() {
-        if (browser.equals("chrome")) {
-            startBrowserChrome();
-        } else if (browser.equals("firefox")) {
-            startBrowserFirefox();
+        if ("chrome".equalsIgnoreCase(browser)) {
+            WebDriverManager.chromedriver().setup();  // ← сначала setup
+            driver = new ChromeDriver();               // ← потом создание
+        } else if ("firefox".equalsIgnoreCase(browser)) {
+            WebDriverManager.firefoxdriver().setup();
+            driver = new FirefoxDriver();
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемый браузер: " + browser);
         }
+
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         mainPage = new MainPage(driver, wait);
         orderMakePage = new OrderMakePage(driver);
     }
 
-    public void startBrowserChrome() {
-        driver = new ChromeDriver();
-        WebDriverManager.chromedriver().setup();
-    }
-
-    public void startBrowserFirefox() {
-        driver = new FirefoxDriver();
-        WebDriverManager.firefoxdriver().setup();
-    }
-
     @After
     public void teardown() {
-        //Закрыть браузер
         if (driver != null) {
             driver.quit();
         }
     }
 
     public void openPage() {
-        mainPage.open();
-        mainPage.acceptCookies();
+        if (mainPage != null) {
+            mainPage.open();
+            mainPage.acceptCookies();
+        }
+    }
+
+    public WebDriver getDriver() {
+        return driver;
     }
 }

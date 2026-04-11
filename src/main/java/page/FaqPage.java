@@ -5,12 +5,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.Test;
 
-import java.util.Collections;
 import java.util.List;
-
-import static org.testng.AssertJUnit.*;
+import java.util.stream.Collectors;
 
 public class FaqPage {
     private final WebDriver driver;
@@ -59,7 +56,7 @@ public class FaqPage {
         clickQuestion(questionText);
         By answerByXpath = By.xpath(String.format(ANSWER_XPATH_TEMPLATE, questionText));
         WebElement answerElement = wait.until(ExpectedConditions.visibilityOfElementLocated(answerByXpath));
-        return answerElement.getText().trim(); // trim() для очистки от лишних пробелов
+        return answerElement.getText().trim();
     }
 
     /**
@@ -96,20 +93,15 @@ public class FaqPage {
         return questionElements.stream()
                 .map(WebElement::getText)
                 .map(String::trim)
-                .toList();
+                .collect(Collectors.toList()); // Совместимо с Java 11
     }
 
-    @Test
-    public void testAnswersPanelLoading() {
-        openPage();
-        FaqPage faqPage = null;
-        List<WebElement> answersPanels;
-        answersPanels = Collections.unmodifiableList(faqPage.waitForAnswersPanel());
-        assertNotNull("Панели с ответами не загружены", answersPanels);
-        assertFalse("Не найдено ни одной панели с ответами", answersPanels.isEmpty());
-    }
-
-    private void openPage() {
-
+    /**
+     * Переход на страницу FAQ.
+     *
+     * @param url адрес страницы
+     */
+    public void openPage(String url) {
+        driver.get(url);
     }
 }

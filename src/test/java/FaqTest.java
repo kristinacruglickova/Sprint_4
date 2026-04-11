@@ -10,10 +10,8 @@ import steps.FaqSteps;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static java.sql.DriverManager.getDriver;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -22,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 public class FaqTest extends BaseTest {
 
     private static final int DEFAULT_TIMEOUT = 10;
+    private static final String FAQ_URL = "https://qa-scooter.praktikum-services.ru/"; // замените на ваш URL
 
     @Parameterized.Parameters(name = "{0}: Вопрос: {1}")
     public static Object[][] getBrowserSelection() {
@@ -63,22 +62,30 @@ public class FaqTest extends BaseTest {
 
     @Before
     public void setUp() {
-        WebDriver driver = (WebDriver) getDriver(); // Используем метод из BaseTest
+        // Получаем драйвер из базового класса
+        WebDriver driver = getDriver();
+
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(DEFAULT_TIMEOUT));
         faqPage = new FaqPage(driver, wait);
         faqSteps = new FaqSteps(faqPage);
-    }
 
-    private Object getDriver() {
-        return null;
+        // Переход на страницу
+        faqPage.openPage(FAQ_URL);
     }
 
     @Test
     public void testQuestionAnswerMatching() {
-        openPage();
-        assertTrue("Вопрос не найден на странице или не виден: " + question, faqPage.isQuestionVisible(question));
+        // Проверка: вопрос виден на странице
+        assertTrue("Вопрос не найден на странице или не виден: " + question,
+                faqPage.isQuestionVisible(question));
+
+        // Действие: кликаем по вопросу и получаем ответ
         faqSteps.clickQuestion(question);
         String actualAnswer = faqSteps.getAnswer(question);
-        assertEquals("Ответ на вопрос '" + question + "' не совпадает.", expectedAnswer, actualAnswer);
+
+        // Проверка: ответ совпадает с ожидаемым
+        assertNotNull("Ответ не должен быть пустым", actualAnswer);
+        assertEquals("Ответ на вопрос '" + question + "' не совпадает.",
+                expectedAnswer, actualAnswer);
     }
 }
