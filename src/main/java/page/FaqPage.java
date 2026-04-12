@@ -1,6 +1,7 @@
 package page;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -13,11 +14,9 @@ public class FaqPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
-    // Локаторы элементов
-    private static final By QUESTIONS_BLOCK = By.cssSelector(".accordion__button");
-    private static final By ANSWER_PANEL = By.cssSelector(".accordion__panel p");
-    private static final String QUESTION_XPATH_TEMPLATE = "//button[text()='%s']";
-    private static final String ANSWER_XPATH_TEMPLATE = "//button[text()='%s']/following-sibling::div/p";
+    // Локаторы элементов - ищем кнопки и панели аккордеона более гибко
+    private static final By QUESTIONS_BLOCK = By.xpath("//button[contains(@class, 'accordion') or contains(@class, 'Accordion')]");
+    private static final By ANSWER_PANEL = By.xpath("//div[contains(@class, 'accordion') or contains(@class, 'Accordion')]//*[self::p or self::span or self::div[@class]]");
 
     public FaqPage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
@@ -31,7 +30,8 @@ public class FaqPage {
      */
     public void clickQuestion(String questionText) {
         WebElement questionElement = findQuestionElement(questionText);
-        questionElement.click();
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", questionElement);
+        wait.until(ExpectedConditions.elementToBeClickable(questionElement)).click();
     }
 
     /**
@@ -53,10 +53,32 @@ public class FaqPage {
      * @return текст ответа
      */
     public String getAnswer(String questionText) {
-        clickQuestion(questionText);
-        By answerByXpath = By.xpath(String.format(ANSWER_XPATH_TEMPLATE, questionText));
-        WebElement answerElement = wait.until(ExpectedConditions.visibilityOfElementLocated(answerByXpath));
-        return answerElement.getText().trim();
+        WebElement questionElement = findQuestionElement(questionText);
+        
+        // Скролл до вопроса
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", questionElement);
+        
+        // Клик по вопросу
+        wait.until(ExpectedConditions.elementToBeClickable(questionElement)).click();
+        
+        // После клика ищем все параграфы и возвращаем первый видимый с текстом (отличный от вопроса)
+        wait.until(d -> {
+            List<WebElement> paragraphs = d.findElements(By.xpath("//p[normalize-space() != '']"));
+            return paragraphs.stream()
+                    .filter(WebElement::isDisplayed)
+                    .filter(p -> !p.getText().contains(questionText) && p.getText().length() > 5)
+                    .findFirst()
+                    .orElse(null) != null;
+        });
+        
+        List<WebElement> paragraphs = driver.findElements(By.xpath("//p[normalize-space() != '']"));
+        for (WebElement p : paragraphs) {
+            if (p.isDisplayed() && !p.getText().contains(questionText) && p.getText().length() > 5) {
+                return p.getText().trim();
+            }
+        }
+        
+        throw new org.openqa.selenium.TimeoutException("Не удалось найти ответ на вопрос: " + questionText);
     }
 
     /**
@@ -76,8 +98,13 @@ public class FaqPage {
      */
     public boolean isQuestionVisible(String questionText) {
         try {
-            WebElement questionElement = findQuestionElement(questionText);
-            return questionElement.isDisplayed();
+            List<WebElement> questionElements = driver.findElements(By.xpath("//*[contains(normalize-space(), '" + questionText + "')]"));
+            for (WebElement elem : questionElements) {
+                if (elem.isDisplayed() && (elem.getTagName().equals("button") || elem.getAttribute("class").contains("accordion"))) {
+                    return true;
+                }
+            }
+            return false;
         } catch (Exception e) {
             return false;
         }
