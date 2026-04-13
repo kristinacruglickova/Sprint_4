@@ -20,6 +20,7 @@ public class OrderMakePage {
     // 🔹 Локаторы (упрощённые и проверенные)
     private final By modalDialog = By.cssSelector("div.Order_Modal__YZ-d3");
     private final By overlay = By.cssSelector("div.Order_Overlay__3KW-T");
+    private final By overlays = By.xpath("//*[contains(@class,'Overlay')]");
 
     // Кнопка "Да" в модалке — по тексту в контейнере Buttons
     private final By confirmYesBtn = By.xpath("//div[contains(@class,'Order_Modal')]//div[contains(@class,'Order_Buttons')]//button[normalize-space()='Да']");
@@ -54,6 +55,7 @@ public class OrderMakePage {
     public OrderMakePage(WebDriver driver) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     }
 
     // ==================== ШАГ 1: Данные ====================
@@ -114,7 +116,7 @@ public class OrderMakePage {
     // ==================== КНОПКА "ЗАКАЗАТЬ" — ГЛАВНОЕ ИСПРАВЛЕНИЕ ====================
 
     /**
-     * 🔹 Надёжный клик по кнопке "Заказать"
+     * 🔹 Клик по кнопке "Заказать"
      * 1. Ждём исчезновения оверлея
      * 2. Скроллим к кнопке
      * 3. Пробуем обычный клик, если не вышло — JS
@@ -153,239 +155,24 @@ public class OrderMakePage {
      */
     public void confirmAction() {
         System.out.println(">>> Waiting for modal dialog...");
-
-        // 1. Ждём появления модалки
         wait.until(ExpectedConditions.visibilityOfElementLocated(modalDialog));
         System.out.println(">>> Modal found");
 
-        // 2. Ждём исчезновения оверлея внутри модалки
-        try {
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(overlay));
-        } catch (Exception ignored) {}
+        WebElement yesBtn = wait.until(ExpectedConditions.elementToBeClickable(confirmYesBtn));
+        yesBtn.click();
+        System.out.println(">>> 'Да' clicked");
 
-        // 3. Ищем кнопку "Да"
-        WebElement yesBtn;
-        try {
-            yesBtn = wait.until(ExpectedConditions.presenceOfElementLocated(confirmYesBtn));
-            System.out.println(">>> 'Да' button found");
-        } catch (Exception e) {
-            System.out.println(">>> Primary locator failed, trying backup...");
-            yesBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.xpath("//div[contains(@class,'Order_Buttons')]//button[normalize-space()='Да']")
-            ));
-            System.out.println(">>> 'Да' button found via backup locator");
-        }
+        // Ждём успех
+        wait.until(ExpectedConditions.or(
+            ExpectedConditions.visibilityOfElementLocated(successText),
+            ExpectedConditions.visibilityOfElementLocated(viewStatusBtn)
+        ));
+        System.out.println(">>> Success content found");
 
-        // Убеждаемся, что кнопка видима
-        wait.until(ExpectedConditions.visibilityOf(yesBtn));
-        System.out.println(">>> 'Да' button is visible");
-
-        // 🔍 DEBUG: Проверяем, что это именно кнопка "Да" (последняя)
-        List<WebElement> allButtons = driver.findElements(By.xpath("//div[contains(@class,'Order_Modal')]//button"));
-        System.out.println(">>> Found " + allButtons.size() + " buttons in modal");
-        for (int i = 0; i < allButtons.size(); i++) {
-            System.out.println(">>> Button " + i + ": " + allButtons.get(i).getText() + " (displayed: " + allButtons.get(i).isDisplayed() + ")");
-        }
-        
-        // Берём именно последнюю кнопку (это "Да")
-        WebElement yesBtnLast = allButtons.get(allButtons.size() - 1);
-        System.out.println(">>> Target button text: '" + yesBtnLast.getText() + "'");
-
-        // 4. Кликаем - несколько попыток разными способами
-        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", yesBtnLast);
-        
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException ignored) {}
-
-        // Инициализируем Actions для всех попыток
-        Actions actions = new Actions(driver);
-        
-        // Попытка 0: Используем Tab + Enter (клавиатурная навигация)
-        boolean clicked = false;
-        try {
-            System.out.println(">>> Attempting keyboard navigation (Tab + Enter)...");
-            // Используем Actions для отправки клавиш
-            actions.click(yesBtnLast).perform();
-            Thread.sleep(50);
-            actions.sendKeys(Keys.ENTER).perform();
-            System.out.println(">>> 'Да' activated via Actions keyboard (Enter)");
-            clicked = true;
-        } catch (Exception e0) {
-            System.out.println(">>> Keyboard navigation failed: " + e0.getMessage());
-        }
-
-        // Попытка 0b: Проверяем наличие невидимого оверлея
-        if (!clicked) {
-            try {
-                System.out.println(">>> Checking for overlays...");
-                List<WebElement> overlays = driver.findElements(By.xpath("//*[contains(@class,'Overlay')]"));
-                System.out.println(">>> Found " + overlays.size() + " overlay elements");
-            } catch (Exception eCheck) {
-                System.out.println(">>> No overlays detected");
-            }
-        }
-
-        // Попытка 0c: Проверяем если может быть ошибка в консоли браузера
-        if (!clicked) {
-            try {
-                System.out.println(">>> Checking for button onClick attributes...");
-                String onClickAttr = yesBtnLast.getAttribute("onclick");
-                String dataAttr = yesBtnLast.getAttribute("data-test");
-                System.out.println(">>> Button onclick attr: " + onClickAttr);
-                System.out.println(">>> Button data-test attr: " + dataAttr);
-                
-                // Пробуем кликнуть на родителя кнопки
-                System.out.println(">>> Trying to click button's parent element...");
-                WebElement btnParent = (WebElement) ((JavascriptExecutor) driver).executeScript(
-                    "return arguments[0].parentElement;", yesBtnLast
-                );
-                btnParent.click();
-                System.out.println(">>> Parent element clicked");
-                clicked = true;
-            } catch (Exception eParent) {
-                System.out.println(">>> Parent click failed: " + eParent.getMessage());
-            }
-        }
-
-        // Попытка 1: Кликнуть на родительский контейнер (может быть, React слушает там)
-        if (!clicked) {
-            try {
-                WebElement buttonsContainer = driver.findElement(By.xpath("//div[contains(@class,'Order_Modal')]//div[contains(@class,'Order_Buttons')]"));
-                // Находим индекс нужной кнопки в контейнере
-                List<WebElement> buttonsInContainer = buttonsContainer.findElements(By.tagName("button"));
-                WebElement targetBtn = buttonsInContainer.get(buttonsInContainer.size() - 1); // последняя кнопка
-                
-                // Кликаем на неё несколько раз подряд
-                ((JavascriptExecutor) driver).executeScript("arguments[0].focus();", targetBtn);
-                Thread.sleep(100);
-                targetBtn.click();
-                System.out.println(">>> 'Да' clicked via Selenium click #1");
-                Thread.sleep(100);
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", targetBtn);
-                System.out.println(">>> 'Да' clicked via JS click #2");
-                clicked = true;
-            } catch (Exception e1) {
-                System.out.println(">>> Initial click attempt failed: " + e1.getMessage());
-            }
-        }
-
-        // Попытка 2: JavaScript с более полным event triggering
-        if (!clicked) {
-            try {
-                System.out.println(">>> Trying rapid multiple clicks + complex event sequence...");
-                ((JavascriptExecutor) driver).executeScript(
-                    "var btn = arguments[0]; " +
-                    "btn.focus(); " +
-                    "for (let i = 0; i < 3; i++) { " +
-                    "  btn.click(); " +
-                    "  var evt = new PointerEvent('click', {bubbles: true, cancelable: true, view: window}); " +
-                    "  btn.dispatchEvent(evt); " +
-                    "} " +
-                    "var evt3 = new CustomEvent('confirm', {bubbles: true, detail: 'yes'}); " +
-                    "btn.dispatchEvent(evt3); ",
-                    yesBtnLast
-                );
-                System.out.println(">>> 'Да' clicked via rapid multi-click with PointerEvent");
-                clicked = true;
-            } catch (Exception e2) {
-                System.out.println(">>> Rapid multi-click failed: " + e2.getMessage());
-            }
-        }
-
-        // Попытка 3: Actions с методом doubleClick
-        if (!clicked) {
-            try {
-                actions.moveToElement(yesBtnLast).click().click().perform();
-                System.out.println(">>> 'Да' clicked via double Actions click");
-                clicked = true;
-            } catch (Exception e3) {
-                System.out.println(">>> Double Actions click failed: " + e3.getMessage());
-            }
-        }
-
-        if (!clicked) {
-            System.out.println(">>> WARNING: 'Да' button click might not have worked!");
-        }
-
-        // 5. Даём время на обновление контента
-        try {
-            Thread.sleep(1000);  // Увеличена пауза с 500 до 1000 мс
-        } catch (InterruptedException ignored) {}
-
-        // 🔍 DEBUG: Выводим HTML модалки после клика
-        try {
-            WebElement modal = driver.findElement(modalDialog);
-            String modalHTML = modal.getAttribute("innerHTML");
-            System.out.println(">>> Modal HTML after click:\n" + modalHTML.substring(0, Math.min(500, modalHTML.length())));
-        } catch (Exception e) {
-            System.out.println(">>> Could not get modal HTML: " + e.getMessage());
-        }
-
-        // 6. 🔹 Ждём, что модалка обновила контент (появился текст успеха)
-        System.out.println(">>> Waiting for success content...");
-        
-        // Создаём долгое ожидание (20 секунд для успеха)
-        WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(20));
-        
-        // Сначала пробуем найти по узким условиям
-        boolean found = false;
-        try {
-            longWait.until(ExpectedConditions.or(
-                    ExpectedConditions.visibilityOfElementLocated(successText),
-                    ExpectedConditions.visibilityOfElementLocated(viewStatusBtn)
-            ));
-            System.out.println(">>> Success content found");
-            found = true;
-        } catch (Exception e) {
-            System.out.println(">>> Narrow search failed after 20s, trying broader search...");
-            // Если не нашли в модалке, ищем везде
-            try {
-                longWait.until(ExpectedConditions.or(
-                        ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[contains(., 'Заказ оформлен')]")),
-                        ExpectedConditions.visibilityOfElementLocated(By.xpath("//button[contains(., 'Посмотреть статус')]")),
-                        ExpectedConditions.visibilityOfElementLocated(By.xpath("//button[contains(normalize-space(.), 'Посмотреть статус')]"))
-                ));
-                System.out.println(">>> Success content found on page");
-                found = true;
-            } catch (Exception e2) {
-                System.out.println(">>> Success content not found anywhere after 40s total");
-                
-                // DEBUG: показываем что осталось в модалке
-                try {
-                    WebElement modal = driver.findElement(modalDialog);
-                    String modalHTML = modal.getAttribute("innerHTML");
-                    System.out.println(">>> Final modal HTML:\n" + (modalHTML.length() > 1000 ? modalHTML.substring(0, 1000) : modalHTML));
-                } catch (Exception ex) {
-                    System.out.println(">>> Could not get modal HTML: " + ex.getMessage());
-                }
-                
-                throw e2;
-            }
-        }
-
-        // 7. Кликаем на "Посмотреть статус" для редиректа
-        WebElement statusBtn;
-        try {
-            statusBtn = wait.until(ExpectedConditions.elementToBeClickable(viewStatusBtn));
-        } catch (Exception e) {
-            // Пробуем найти кнопку не в модалке
-            statusBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[contains(., 'Посмотреть статус')]")));
-        }
-        
-        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", statusBtn);
-        try {
-            actions.moveToElement(statusBtn).click().perform();
-            System.out.println(">>> 'Посмотреть статус' clicked via Actions");
-        } catch (Exception e) {
-            try {
-                statusBtn.click();
-                System.out.println(">>> 'Посмотреть статус' clicked via Selenium");
-            } catch (Exception e2) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", statusBtn);
-                System.out.println(">>> 'Посмотреть статус' clicked via JS");
-            }
-        }
+        // Клик по "Посмотреть статус"
+        WebElement statusBtn = wait.until(ExpectedConditions.elementToBeClickable(viewStatusBtn));
+        statusBtn.click();
+        System.out.println(">>> 'Посмотреть статус' clicked");
     }
 
     // ==================== DEBUG: Проверка заполненности формы ====================
